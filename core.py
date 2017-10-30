@@ -39,7 +39,7 @@ class Web(jzlib.LifeCycle):
         self._web_cache = cache
         self._web_cache_data = {}
         
-        @pygics.api('GET', self.url)
+        @pygics.export('GET', self.url)
         def get(req, *argv):
             path = '/'.join(argv)
             if path: file_path = '%s/%s' % (self.root, path)
