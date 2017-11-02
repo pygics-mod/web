@@ -7,19 +7,28 @@ Created on 2017. 9. 19.
 import os
 import types
 import jzlib
-import pygics
+from pygics import export
 
 class Web(jzlib.LifeCycle):
     
-    class _CacheData_(types.FileType):
-        def __init__(self, path):
-            with open(path, 'rb') as fd: self.data = fd.read()
-            self.path = path
-        
-        @property
-        def name(self): return self.path
-        def read(self): return self.data
-        def close(self): return None
+    _CACHE_DATA = {}
+    
+    @classmethod
+    def getCache(cls, file_path):
+        if file_path in Web._CACHE_DATA: return Web._CACHE_DATA[file_path]
+        else:
+            class Cache(types.FileType):
+                def __init__(self, file_path):
+                    with open(file_path, 'rb') as fd: self.data = fd.read()
+                    self.file_path = file_path
+                @property
+                def name(self): return self.file_path
+                def read(self): return self.data
+                def close(self): return None
+            if not os.path.exists(file_path): raise Exception('could not find %s' % file_path)
+            cache = Cache(file_path)
+            Web._CACHE_DATA[file_path] = cache
+            return cache
     
     def __init__(self,
                  url=None,
@@ -39,19 +48,12 @@ class Web(jzlib.LifeCycle):
         self._web_cache = cache
         self._web_cache_data = {}
         
-        @pygics.export('GET', self.url)
+        @export('GET', self.url)
         def get(req, *argv):
             path = '/'.join(argv)
             if path: file_path = '%s/%s' % (self.root, path)
             else: file_path = '%s/%s' % (self.root, self._web_index)
-            if self._web_cache:
-                if file_path in self._web_cache_data:
-                    return self._web_cache_data[file_path]
-                else:
-                    if not os.path.exists(file_path): raise Exception('could not find %s' % path)
-                    cache_data = Web._CacheData_(file_path)
-                    self._web_cache_data[file_path] = cache_data
-                    return cache_data
+            if self._web_cache: return Web.getCache(file_path)
             else:
                 if not os.path.exists(file_path): raise Exception('could not find %s' % path)
                 return open(file_path, 'rb')
